@@ -1,0 +1,14 @@
+{
+  "name": "jumpspace-trainer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An open-source trainer for Jump Space (Unity 6 / IL2CPP): currencies, items, blueprints with chosen modules, ships and cheats, through Frida.",
+  "scripts": {
+    "test": "node --test tests/agent.test.cjs tests/modules.test.mjs tests/movement.test.mjs tests/blueprint_flow.test.mjs tests/gear_spec.test.mjs",
+    "test:py": "venv\\Scripts\\python.exe -m unittest discover -s tests"
+  },
+  "dependencies": {
+    "frida-il2cpp-bridge": "0.14.0"
+  }
+}

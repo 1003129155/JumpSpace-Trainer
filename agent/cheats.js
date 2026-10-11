@@ -1,0 +1,223 @@
+// Cheat "locks": tiny jobs that run on the Unity main thread a few times a second
+// while enabled. Each cheat only touches the local player's own objects.
+import { createScaler } from "./movement.js";
+
+export function installCheats(JB, ex) {
+  const { onMain, bridgeError, rpcSafe, addTicker, removeTicker } = JB;
+
+  const localHealth = () => {
+    const p = JB.localPlayer();
+    return p ? JB.healthOf(p) : null;
+  };
+
+  const defs = {
+    // The game's own invulnerability flag: every damage path ignores the player.
+    god: {
+      label: "无敌",
+      hint: "角色不受任何伤害（游戏自带的无敌标记，持续维持）",
+      every: 250,
+      tick() {
+        const hc = localHealth();
+        if (hc && !hc.method("get_IsInvulnerable").invoke()) hc.method("set_IsInvulnerable").invoke(true);
+      },
+      off() {
+        const hc = localHealth();
+        if (hc) hc.method("set_IsInvulnerable").invoke(false);
+      },
+    },
+
+    // Keep health and shield topped up (also works for non-damage drains).
+    heal: {
+      label: "锁定血量与护盾",
+      hint: "血量和护盾始终保持满值",
+      every: 100,
+      tick() {
+        const hc = localHealth();
+        if (!hc || hc.method("get_IsDead").invoke()) return;
+        const maxHealth = hc.method("get_MaxHealth").invoke();
+        if (hc.method("get_Health").invoke() < maxHealth - 0.05) hc.method("SetHealth").invoke(maxHealth);
+        const maxShield = hc.method("get_MaxShieldLevel").invoke();
+        if (maxShield > 0 && hc.method("get_Shield").invoke() < maxShield - 0.05) hc.method("SetShield").invoke(maxShield);
+      },
+    },
+
+    // Magazine and reserve of the weapon in hand stay full.
+    ammo: {
+      label: "无限弹药",
+      hint: "手持武器的弹匣和备弹始终保持满值，无需换弹",
+      every: 100,
+      tick() {
+        const p = JB.localPlayer();
+        if (!p) return;
+        const inst = p.field("m_ItemInstantiator").value;
+        if (inst.isNull()) return;
+        const fp = inst.field("m_FirstPersonItem").value;
+        if (fp.isNull()) return;
+        const pp = fp.field("m_PersistentPickupable").value;
+        if (pp.isNull()) return;
+        const bb = pp.field("m_PickupableItemBlackboardData").value;
+        const magSize = bb.field("m_MagSize").value.method("get_Value").invoke();
+        if (magSize > 0) {
+          const inMag = bb.field("m_AmmoInMag").value;
+          if (inMag.method("get_Value").invoke() < magSize) inMag.method("set_Value").invoke(magSize);
+        }
+        const getAmmo = fp.tryMethod("get_Ammo");
+        const setAmmo = fp.tryMethod("set_Ammo");
+        if (getAmmo && setAmmo) {
+          const max = p.field("m_ItemHandler").value.method("get_MaxAmmo").invoke();
+          if (max > 0 && getAmmo.invoke() < max) setAmmo.invoke(max);
+        }
+      },
+    },
+  };
+
+  // --- ship cheats -------------------------------------------------------
+  // The ship core is the run's life bar; its health component lives on a prefab
+  // named "…DamagePoint_ShipCore". It only exists while a ship is spawned.
+  let coreCache = null;
+  let coreScanAt = 0;
+  function shipCore() {
+    const O = () => JB.U.cls("UnityEngine.Object").method("op_Implicit");
+    if (coreCache) {
+      try { if (O().invoke(coreCache)) return coreCache; } catch (e) { /* rescan */ }
+      coreCache = null;
+    }
+    const now = Date.now();
+    if (now - coreScanAt < 2000) return null; // scanning every tick would be wasteful
+    coreScanAt = now;
+    coreCache = JB.U.all("HealthComponent_Base", true).find((h) => /ShipCore/i.test(JB.U.name(h.method("get_gameObject").invoke()))) || null;
+    return coreCache;
+  }
+
+  defs.ship = {
+    label: "飞船核心无敌",
+    hint: "飞船核心不会被击毁（飞船出现在任务中时生效）",
+    every: 500,
+    tick() {
+      const core = shipCore();
+      if (core && !core.method("get_IsInvulnerable").invoke()) core.method("set_IsInvulnerable").invoke(true);
+    },
+    off() {
+      const core = shipCore();
+      if (core) core.method("set_IsInvulnerable").invoke(false);
+    },
+  };
+
+  defs.materia = {
+    label: "无限飞船物质",
+    hint: "飞船物质始终保持满值（复活队友、购买不再受限）",
+    every: 500,
+    tick() {
+      const S = JB.U.cls("Keepsake.ShipMateriaController");
+      const amount = S.method("get_GetShipMateriaAmount").invoke();
+      const max = S.method("get_GetMaxMateria").invoke();
+      if (!(max > 0) || amount >= max) return;
+      const c = JB.U.all("Keepsake.ShipMateriaController", true).find((x) => JB.safe(() => x.method("get_NetworkObject").invoke().method("get_IsSpawned").invoke(), false));
+      if (c) c.method("ModifyMateria").invoke(max - amount);
+    },
+  };
+
+  // --- movement (multiplier cheats) --------------------------------------
+  // Scaled on top of the character's base values; see movement.js for how this stays reversible.
+  const speed = createScaler(JB, { props: ["WalkSpeed", "SprintBonusSpeed", "WalkSpeedAcceleration"] });
+  const jump = createScaler(JB, { props: ["JumpHeight"] });
+
+  defs.speed = {
+    label: "移动速度",
+    hint: "走路和冲刺速度按倍率提升（以角色基础速度为准，不受手持物减速影响）",
+    every: 500,
+    param: { label: "倍率", min: 1.25, max: 4, step: 0.25, value: 1.5, unit: "×", presets: [1.5, 2, 3] },
+    tick: () => { speed.apply(defs.speed.param.value); },
+    off: () => { speed.release(); },
+  };
+
+  defs.jump = {
+    label: "跳跃力度",
+    hint: "起跳力度按倍率提升，能跳得更高更远",
+    every: 500,
+    param: { label: "倍率", min: 1.25, max: 3, step: 0.25, value: 1.5, unit: "×", presets: [1.5, 2, 3] },
+    tick: () => { jump.apply(defs.jump.param.value); },
+    off: () => { jump.release(); },
+  };
+
+  // A crashed or hot-reloaded agent may have left multiplier entries on the character; clear them once.
+  let leftoversChecked = false;
+  function clearLeftovers() {
+    if (leftoversChecked) return;
+    try {
+      const a = speed.clearLeftovers();
+      const b = jump.clearLeftovers();
+      if (a === null || b === null) return; // no character yet, try again later
+      leftoversChecked = true;
+      if (a + b > 0) console.log(`cleared ${a + b} leftover movement overrides`);
+    } catch (e) {
+      leftoversChecked = true; // a changed game API must not break the cheat list; the toggles report their own errors
+      console.log(`leftover cleanup skipped: ${e}`);
+    }
+  }
+
+  const enabled = new Set();
+
+  function setParam(d, value) {
+    const n = Number(value);
+    if (!d.param) throw bridgeError("NO_PARAMETER", "这个功能没有可调数值");
+    if (!Number.isFinite(n) || n < d.param.min - 1e-9 || n > d.param.max + 1e-9) throw bridgeError("INVALID_VALUE", `数值需要在 ${d.param.min}–${d.param.max} 之间`);
+    d.param.value = Math.round(n / d.param.step) * d.param.step;
+  }
+
+  function setCheat(name, on, param) {
+    const d = defs[name];
+    if (!d) throw bridgeError("UNKNOWN_CHEAT", "未知的修改功能");
+    if (param !== undefined && param !== null && param !== "") setParam(d, param);
+    if (on) {
+      enabled.add(name);
+      addTicker("cheat:" + name, d.every, d.tick);
+    } else {
+      enabled.delete(name);
+      removeTicker("cheat:" + name);
+      if (d.off) {
+        try { d.off(); } catch (e) { console.log(`cheat ${name} cleanup failed: ${e}`); }
+      }
+    }
+  }
+
+  function describe() {
+    clearLeftovers();
+    return Object.entries(defs).map(([name, d]) => {
+      const t = JB.tickerInfo("cheat:" + name);
+      return { name, label: d.label, hint: d.hint, enabled: enabled.has(name), runs: t ? t.runs : 0, error: t && t.lastError ? t.lastError : null, param: d.param ? { ...d.param } : null };
+    });
+  }
+
+  JB.cheatSummary = () => Object.fromEntries(Object.keys(defs).map((n) => [n, enabled.has(n)]));
+  JB.onDispose(() => { for (const n of [...enabled]) setCheat(n, false); });
+
+  Object.assign(ex, {
+    cheats: rpcSafe(() => onMain(() => ({ cheats: describe() }))),
+
+    setCheat: rpcSafe((name, value, param) => onMain(() => {
+      const on = value === true || value === "true" || value === "1" || value === 1;
+      setCheat(String(name), on, param);
+      return { cheats: describe() };
+    })),
+
+    // change the number of a running cheat (speed ×2 → ×3) without toggling it
+    setCheatParam: rpcSafe((name, value) => onMain(() => {
+      const key = String(name);
+      const d = defs[key];
+      if (!d) throw bridgeError("UNKNOWN_CHEAT", "未知的修改功能");
+      setParam(d, value);
+      if (enabled.has(key)) d.tick();
+      return { cheats: describe() };
+    })),
+
+    // run a lock's action once without leaving it enabled ("heal now", "refill ammo now")
+    cheatOnce: rpcSafe((name) => onMain(() => {
+      const d = defs[String(name)];
+      if (!d) throw bridgeError("UNKNOWN_CHEAT", "未知的修改功能");
+      if (!JB.localPlayer()) throw bridgeError("NO_PLAYER", "当前没有可操作的本机角色");
+      d.tick();
+      return { cheats: describe() };
+    })),
+  });
+}

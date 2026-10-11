@@ -1,0 +1,22 @@
+# environments
+venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# build output (打包.bat)
+build/
+dist/
+
+# what a run leaves behind: logs, the operation history, save backups and the pipe key are per machine
+*.log
+data/
+backups/
+daemon.key
+
+# exports from the game (dumps of its code and catalogs) and scratch output of the dev tools
+out/
+
+# one-off probes kept locally
+snippets/archive/
+snippets/.kiro/
