@@ -122,6 +122,10 @@ node --check agent.js
 - `dist\跳帮修改器\`：整个程序（约 160 MB，其中 135 MB 是 Frida 本身），入口是里面的 `跳帮修改器.exe`；
 - `dist\跳帮修改器.zip`：同一个文件夹压缩后（约 60 MB），发给别人即可。
 
+**自动打包**：推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）后，GitHub Actions 会跑完测试、打包，
+建一个附带 `JumpSpace-Trainer-<版本>-win-x64.zip` 的**草稿** Release，检查说明后在 GitHub 上手动发布。
+在 Actions 页面手动运行“打包发布”只打包、不建 Release，压缩包在该次运行的构建产物里。
+
 做了什么：
 
 1. 先把 agent（`agent.js`、`agent\*.js` 连同 frida-il2cpp-bridge）编译成一个文件 `build\agent.bundle.js`，所以打包后的程序**不需要 Node，也不需要 `node_modules`**。

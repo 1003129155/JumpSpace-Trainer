@@ -1,0 +1,79 @@
+name: 打包发布
+
+# A tag v* builds the packaged program and attaches it to a draft release (published by hand after a look);
+# a manual run only builds it and keeps the zip as a workflow artifact.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      # the environment 安装依赖.bat makes: frida in the venv, PyInstaller in the Python the venv was created from
+      # (build_app.py looks for it through venv\pyvenv.cfg)
+      - name: 安装依赖
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m venv venv
+          venv\Scripts\python.exe -m pip install --disable-pip-version-check "frida==17.23.1"
+          python -m pip install --disable-pip-version-check "pyinstaller==6.16.0"
+          npm ci --no-audit --no-fund
+
+      - name: 测试
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          npm test
+          venv\Scripts\python.exe -m unittest discover -s tests
+
+      - name: 打包
+        run: venv\Scripts\python.exe build_app.py
+
+      # release assets lose non-ASCII characters of their names on GitHub, so the zip gets an ASCII one
+      - name: 命名
+        id: zip
+        run: |
+          $ver = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}" } else { "dev-" + "${{ github.sha }}".Substring(0, 7) }
+          $name = "JumpSpace-Trainer-$ver-win-x64"
+          $built = Get-ChildItem dist -Filter *.zip | Select-Object -First 1
+          Move-Item $built.FullName "$name.zip"
+          "name=$name" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: ${{ steps.zip.outputs.name }}.zip
+
+      - name: 草稿 Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $zip = "${{ steps.zip.outputs.name }}.zip"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zip --clobber
+          } else {
+            gh release create $tag $zip --draft --title "跳帮修改器 $tag" --generate-notes
+          }
