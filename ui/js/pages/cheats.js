@@ -11,6 +11,7 @@ const META = {
   ammo: { icon: "ammo", once: { label: "立即补满弹药", method: "ammo" } },
   ship: { icon: "rocket", once: null },
   revive: { icon: "user", once: { label: "立即补满", method: "revive" } },
+  solo: { icon: "unlock", once: null },
   materia: { icon: "gem", once: { label: "立即补满", method: "materia" } },
   speed: { icon: "run", once: null },
   jump: { icon: "jump", once: null },
@@ -22,6 +23,7 @@ const GROUPS = [
   { title: "战斗", names: ["ammo"] },
   { title: "飞船", names: ["ship", "materia"] },
   { title: "移动", names: ["speed", "jump"] },
+  { title: "任务", names: ["solo"] },
 ];
 
 const fmtMult = (v) => "×" + (Math.round(v * 100) / 100);

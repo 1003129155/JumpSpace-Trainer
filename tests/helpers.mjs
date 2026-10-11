@@ -2,10 +2,12 @@
 export const bridgeError = (code, message) => Object.assign(new Error(message), { code });
 export const safe = (f, d = "?") => { try { return f(); } catch { return d; } };
 
-// an object whose methods/fields come from plain JS values or functions
+// an object whose methods/fields come from plain JS values or functions; its handle prints as a unique address
+let nextHandle = 0;
 export function fake(methods = {}, fields = {}) {
+  const n = ++nextHandle;
   const obj = {
-    handle: { id: Symbol("handle"), equals(other) { return other === this || other.id === this.id; } },
+    handle: { id: Symbol("handle"), equals(other) { return other === this || other.id === this.id; }, toString: () => "0x" + n.toString(16) },
     isNull: () => false,
     method: (name) => ({
       invoke: (...args) => {

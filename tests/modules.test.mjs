@@ -232,13 +232,39 @@ test("unlimited revives keep the ship's count of used respawns at zero", async (
   assert.equal(s.used, 0);
 });
 
+test("solo doors keep a shield's required players at one and put the rule's number back when switched off", async () => {
+  const { JB } = cheatWorld();
+  const shield = (n, alive = true) => {
+    const s = { n, alive };
+    const required = fake({ get_Value: () => s.n, set_Value: (v) => { s.n = v; } });
+    const c = fake({}, { m_InteractionBlackboardData: fake({}, { m_RequiredPlayersInTotal: required }) });
+    c._s = s;
+    return c;
+  };
+  const all = shield(4);
+  const one = shield(1);
+  const gone = shield(3, false);
+  JB.U = {
+    cls: () => fake({ op_Implicit: (o) => o._s.alive }),
+    all: (name) => (name === "Keepsake.BlockingShield.MateriagunInteractionController" ? [all, one, gone] : []),
+    name: () => "",
+  };
+  const ex = {};
+  installCheats(JB, ex);
+  await call(ex, "setCheat", "solo", "true");
+  JB._tickers.get("cheat:solo").fn();
+  assert.deepEqual([all._s.n, one._s.n, gone._s.n], [1, 1, 3]);
+  await call(ex, "setCheat", "solo", "false");
+  assert.deepEqual([all._s.n, one._s.n, gone._s.n], [4, 1, 3]);
+});
+
 test("unknown cheats are rejected and the summary reflects what is on", async () => {
   const { JB } = cheatWorld();
   const ex = {};
   installCheats(JB, ex);
   assert.equal((await call(ex, "setCheat", "fly", "true")).error.code, "UNKNOWN_CHEAT");
   await call(ex, "setCheat", "ammo", "true");
-  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, materia: false, speed: false, jump: false });
+  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, solo: false, materia: false, speed: false, jump: false });
   JB._disposers.forEach((d) => d());
   assert.equal(JB.cheatSummary().ammo, false);
 });

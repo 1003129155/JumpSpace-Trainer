@@ -125,6 +125,47 @@ export function installCheats(JB, ex) {
     },
   };
 
+  // Blocking shields (the walls opened by aiming materia guns at them) ask for a number of players — two, all but one or
+  // all of them — which the game sets from the shield's rule whenever the number of living players changes. Keeping it at
+  // one lets a single player open them the normal way; turning the cheat off puts the rule's number back.
+  const isAlive = (o) => { try { return !!JB.U.cls("UnityEngine.Object").method("op_Implicit").invoke(o); } catch (e) { return false; } };
+  let shieldCache = [];
+  let shieldScanAt = 0;
+  function shields() {
+    const now = Date.now();
+    if (now - shieldScanAt >= 2000) {
+      shieldScanAt = now;
+      shieldCache = JB.U.all("Keepsake.BlockingShield.MateriagunInteractionController", false);
+    }
+    return shieldCache.filter(isAlive);
+  }
+  const requiredPlayers = (c) => c.field("m_InteractionBlackboardData").value.field("m_RequiredPlayersInTotal").value;
+  const shieldRules = new Map(); // shield handle -> the number of players its rule asked for
+
+  defs.solo = {
+    label: "单人开门",
+    hint: "要几个人一起用物质枪才能打开的护盾门，你一个人就能打开（你是房主时生效）",
+    every: 500,
+    tick() {
+      for (const c of shields()) {
+        const required = requiredPlayers(c);
+        const n = required.method("get_Value").invoke();
+        if (n > 1) {
+          shieldRules.set(c.handle.toString(), n);
+          required.method("set_Value").invoke(1);
+        }
+      }
+    },
+    off() {
+      for (const c of shields()) {
+        const n = shieldRules.get(c.handle.toString());
+        const required = requiredPlayers(c);
+        if (n && required.method("get_Value").invoke() === 1) required.method("set_Value").invoke(n);
+      }
+      shieldRules.clear();
+    },
+  };
+
   defs.materia = {
     label: "无限飞船物质",
     hint: "飞船物质始终保持满值（复活队友、购买不再受限）",
