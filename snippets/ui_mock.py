@@ -114,7 +114,24 @@ STATUS = {
     "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
 }
 if not STALE:
-    STATUS["agentApi"] = 2
+    STATUS["agentApi"] = 3
+
+# ---- ventures (委托) --------------------------------------------------------------------------------------------------
+def _venture(key, name, kind, state, description, xp=0, credits=0, ingots=0, unlocks=(), achievement=False, prerequisites=True, season=True):
+    return {"key": key, "name": name, "kind": kind, "state": state, "description": description, "prerequisitesMet": prerequisites,
+            "inSeason": season, "secret": False, "achievement": achievement, "experience": xp, "credits": credits, "ingots": ingots,
+            "unlocks": [{"guid": f"{key}-{i}", "kind": k, "name": n} for i, (k, n) in enumerate(unlocks)]}
+
+
+VENTURES = [
+    _venture("v-alliance", "加入抵抗组织", "main", "active", "找到联系阿提兰抵抗联盟的方法", 700, 2000, 12, [("region", "夸拉之柱")], achievement=True),
+    _venture("v-dart", "飞镖 DT-4", "ship", "active", "找到并带回飞镖 DT-4", unlocks=[("ship", "DT-4 飞镖")]),
+    _venture("v-salvage", "替代来源", "side", "ready", "带回价值3个锭的回收物", 600, 300, 5, [("helmet", "打捞者头盔"), ("trait", "冲击裤")]),
+    _venture("v-fire", "防火实地测试", "side", "idle", "扑灭10场火灾", 1000, 4000, 0, [("helmet", "火焰头盔"), ("trait", "火山碎屑绝缘体")], prerequisites=False),
+    _venture("v-pumpkin", "南瓜狩猎", "side", "idle", "收集6个南瓜", 400, 600, 0, [("helmet", "南瓜头盔")], season=False),
+    _venture("v-region", "伊卡里昂边域", "region", "active", "下载3个地图碎片", unlocks=[("region", "伊卡里昂边域")]),
+    _venture("v-ship1", "修复飞船 - 第2部分", "main", "completed", "完成一个\"坠毁货物回收\"任务", 900, 500, 7, [("ship", "C-3 双体船 Mk.1")]),
+]
 
 
 # ---- the attribute editor: a tiny stand-in for the game's modules and rules ------------------------------------------
@@ -351,6 +368,16 @@ def raw(method, args, timeout=130):
             norm, ev = evaluate(json.loads(spec) if isinstance(spec, str) else spec)
             out["gear"] = {"tier": norm["tier"], "level": ev["level"], "modules": len(norm["slots"])}
         return out
+    if method == "ventures":
+        return {"ok": True, "ventures": VENTURES, "hidden": 28}
+    if method == "completeVenture":
+        v = next((x for x in VENTURES if x["key"] == (args[0] if args else "")), None)
+        if not v:
+            return {"ok": False, "error": {"code": "VENTURE_NOT_FOUND", "message": "没有找到这个委托，请刷新列表"}}
+        if v["state"] == "completed":
+            return {"ok": True, "changed": False, "venture": v}
+        v["state"] = "completed"
+        return {"ok": True, "changed": True, "venture": v}
     if method in ("progression", "cheats", "ships"):
         return {"ok": True}
     return {"ok": True, "changed": False}

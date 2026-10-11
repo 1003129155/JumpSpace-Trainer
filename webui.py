@@ -36,16 +36,17 @@ SAVE_NAME = "persistent_user_data.bin"
 READ_METHODS = {
     "status", "progression", "cheats", "itemList", "itemInfo", "players", "inv", "recipes", "ships", "blueprints",
     "previewSpawn", "previewUnlockBlueprint", "previewUnlockShip", "previewAddBlueprint", "gearList", "gearEdit", "itemEdit",
+    "ventures",
 }
 WRITE_METHODS = {
     "setCurrency", "addCurrency", "addExperience", "levelUp", "setMateria", "addMateria", "setCheat", "setCheatParam", "cheatOnce",
     "spawn", "equipHand", "unlockRecipes", "unlockShips", "addBlueprint", "lockRecipes",
-    "makeBlueprint", "removeRecipeBlueprints",
+    "makeBlueprint", "removeRecipeBlueprints", "completeVenture",
 }
 # Changes to the profile (save file): back it up first.
 PROFILE_WRITES = {
     "setCurrency", "addCurrency", "addExperience", "levelUp", "unlockRecipes", "unlockShips", "addBlueprint", "lockRecipes",
-    "makeBlueprint", "removeRecipeBlueprints",
+    "makeBlueprint", "removeRecipeBlueprints", "completeVenture",
 }
 ALLOWED = READ_METHODS | WRITE_METHODS
 
@@ -216,6 +217,18 @@ def gear_text(gear):
     return "（" + " · ".join(parts) + "）" if parts else ""
 
 
+def venture_rewards_text(venture):
+    """'（经验 600 · 信用点 300 · 锭 5 · 打捞者头盔、冲击裤）' for what completing a venture gave, '' when it gave nothing listed."""
+    parts = []
+    for key, label in (("experience", "经验"), ("credits", "信用点"), ("ingots", "锭")):
+        if venture.get(key):
+            parts.append(f"{label} {fmt(venture[key])}")
+    names = [u.get("name") for u in venture.get("unlocks", []) if u.get("name")]
+    if names:
+        parts.append("、".join(names))
+    return "（" + " · ".join(parts) + "）" if parts else ""
+
+
 class Gateway:
     """Calls the daemon, records history, protects the save file."""
 
@@ -294,6 +307,9 @@ class Gateway:
         elif method == "itemList":
             for i in result.get("items", []):
                 self.names[i["name"]] = i["display"]
+        elif method == "ventures":
+            for v in result.get("ventures", []):
+                self.names[v["key"]] = v["name"]
 
     # history -------------------------------------------------------------------
     def record(self, method, args, result):
@@ -348,6 +364,12 @@ class Gateway:
         elif method == "removeRecipeBlueprints":
             entry["title"] = "移除蓝图"
             entry["summary"] = f"已移除 {result.get('changed', 0)} 个"
+        elif method == "completeVenture":
+            if not result.get("changed"):
+                return None  # it was done already
+            v = result.get("venture") or {}
+            entry["title"] = "完成委托"
+            entry["summary"] = (v.get("name") or self.names.get(args[0] if args else "", "?")) + venture_rewards_text(v)
         elif method == "lockRecipes":
             done = [r for r in result.get("results", []) if r.get("ok") and r.get("changed")]
             entry["title"] = "重新锁定配方"

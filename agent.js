@@ -6,6 +6,7 @@ import { installCheats } from "./agent/cheats.js";
 import { installGear } from "./agent/gear.js";
 import { installItems } from "./agent/items.js";
 import { installUnlocks } from "./agent/unlocks.js";
+import { installVentures } from "./agent/ventures.js";
 
 // ---------------------------------------------------------------- helpers
 function ser(v) {
@@ -893,9 +894,11 @@ function rootObject(object) {
   return { get target() { return handle.method("get_Target").invoke(); }, free() { handle.method("Free").invoke(); } };
 }
 
+// entry: an index entry ({ key, category, name }) or any asset by its class ({ key, cls, name }); resolves to the loaded asset,
+// which stays loaded until releaseCatalog
 async function loadCatalogAsset(entry) {
   const ref = await onMain(() => {
-    const cls = { cargo: CARGO_CLASS, pickup: ITEM_CLASS, craftable: "Keepsake.GameplayFeatures.Assembler.Craftable", shipBlueprint: "Keepsake.SpaceshipBlueprint" }[entry.category];
+    const cls = entry.cls || { cargo: CARGO_CLASS, pickup: ITEM_CLASS, craftable: "Keepsake.GameplayFeatures.Assembler.Craftable", shipBlueprint: "Keepsake.SpaceshipBlueprint" }[entry.category];
     if (!cls) throw bridgeError("UNSUPPORTED_ASSET", "不支持加载这个资源类别");
     const handle = U.cls("UnityEngine.AddressableAssets.Addressables").method("LoadAssetAsync")
       .overload("System.Object").inflate(U.cls(cls)).invoke(Il2Cpp.string(entry.key));
@@ -915,9 +918,9 @@ async function loadCatalogAsset(entry) {
         if (asset.isNull()) throw bridgeError("ASSET_LOAD_FAILED", `道具资源为空: ${entry.name}`);
         catalogAssetHandles.push(ref);
         retained = true;
-        return true;
+        return asset;
       });
-      if (done) return;
+      if (done) return done;
       if (Date.now() > deadline) throw bridgeError("ASSET_LOAD_TIMEOUT", `加载道具超时: ${entry.name}`);
       await delay(50);
     }
@@ -928,6 +931,26 @@ async function loadCatalogAsset(entry) {
       ref.free();
     });
   }
+}
+
+// what an Addressables key (an asset GUID) is: the class and file name of the ScriptableObject it locates, or null (main thread)
+function locateAsset(key) {
+  const output = Memory.alloc(Process.pointerSize);
+  const type = U.cls("UnityEngine.ScriptableObject").type.object;
+  const locators = U.cls("UnityEngine.AddressableAssets.Addressables").method("get_ResourceLocators").invoke().method("GetEnumerator").invoke();
+  while (locators.method("MoveNext").invoke()) {
+    const locator = locators.method("get_Current").invoke();
+    output.writePointer(NULL);
+    if (!locator.method("Locate").invoke(Il2Cpp.string(key), type, output)) continue;
+    const list = new Il2Cpp.Object(output.readPointer());
+    if (!list.method("get_Count").invoke()) continue;
+    const loc = list.method("get_Item").invoke(0);
+    return {
+      cls: loc.method("get_ResourceType").invoke().method("get_FullName").invoke().content,
+      name: loc.method("get_InternalId").invoke().content.split("/").pop().replace(/\.asset$/i, ""),
+    };
+  }
+  return null;
 }
 
 let catalogLoading = null;
@@ -1467,7 +1490,7 @@ function rpcSafe(fn) {
 const JB = {
   U, ser, safe, delay, onMain, bridgeError, rpcSafe, addTicker, removeTicker,
   networkState, requireServer, requireLocalPlayer, playerRecord, resolvePlayer,
-  resolveItem, catalog, itemDetails, displayOf, fullCatalog, resourceIndex, loadCatalogAsset, managedRows, localProfile,
+  resolveItem, catalog, itemDetails, displayOf, fullCatalog, resourceIndex, loadCatalogAsset, locateAsset, managedRows, localProfile,
   prepareRecipe, recipeUnlocked,
   // the spawn workflow, for the modules that spawn things with attributes
   consumeTask, rootObject, backpackSlot, freeBackpackEntries, validateSpawn, dropContext,
@@ -1485,6 +1508,7 @@ installCheats(JB, rpc.exports);
 installGear(JB, rpc.exports); // before the items: the item list asks which items carry attributes
 installItems(JB, rpc.exports);
 installUnlocks(JB, rpc.exports);
+installVentures(JB, rpc.exports);
 
 // Called by daemon.py before the agent is replaced or the daemon exits:
 // switch the cheat locks off and drop retained Addressables handles.

@@ -127,6 +127,24 @@ class GatewayRecord(TempData):
         self.assertEqual(self.gw.call("makeBlueprint", ["r1", "history", {"tier": 0}]).get("ok"), True)
         self.assertEqual(seen, ["auto"])  # making an item does back up the save first
 
+    def test_a_completed_venture_is_logged_with_its_rewards_and_has_no_undo(self):
+        seen = []
+        self.gw.backups.ensure_recent = lambda reason: seen.append(reason) or {"name": "20260101-000000_auto"}
+        self.reply["completeVenture"] = {"ok": True, "changed": True, "venture": {
+            "key": "v1", "name": "替代来源", "experience": 600, "credits": 1500, "ingots": 5,
+            "unlocks": [{"kind": "helmet", "name": "打捞者头盔"}, {"kind": "trait", "name": "冲击裤"}, {"kind": "other", "name": ""}]}}
+        r = self.gw.call("completeVenture", ["v1"])
+        entry = self.gw.history.get(r["historyId"])
+        self.assertEqual((entry["title"], entry["summary"]), ("完成委托", "替代来源（经验 600 · 信用点 1,500 · 锭 5 · 打捞者头盔、冲击裤）"))
+        self.assertFalse(r["undoable"])
+        self.assertEqual(seen, ["auto"])  # the save is backed up first
+
+    def test_a_venture_that_was_done_already_is_not_logged(self):
+        self.reply["completeVenture"] = {"ok": True, "changed": False, "venture": {"key": "v1", "name": "替代来源"}}
+        r = self.gw.call("completeVenture", ["v1"])
+        self.assertNotIn("historyId", r)
+        self.assertEqual(self.gw.history.recent(), [])
+
     def test_blueprint_changes_and_removals_back_up_the_save_file_first(self):
         seen = []
         self.gw.backups.ensure_recent = lambda reason: seen.append(reason) or {"name": "20260101-000000_auto"}

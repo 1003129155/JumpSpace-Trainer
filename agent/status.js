@@ -1,7 +1,7 @@
 // The version of the agent's RPC interface, reported with every status. The UI knows the version it was written for; when the
 // game still runs an older script (the injected script can only be replaced by restarting the game), the UI says so instead
 // of failing on methods that are not there. Raise it with every change the UI depends on.
-export const AGENT_API = 2;
+export const AGENT_API = 3;
 
 // Cheap, read-only snapshot for the UI header (polled every second or two).
 export function installStatus(JB, ex) {

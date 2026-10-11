@@ -1,4 +1,4 @@
-import { S, AGENT_API, connection, loadItems, loadPlayers, loadHistory, rpc, load, save } from "../store.js";
+import { S, agentHas, connection, loadItems, loadPlayers, loadHistory, rpc, load, save } from "../store.js";
 import { $, $$, esc, icon, clamp } from "../ui.js";
 import { notReady, GROUP_COLOR, SLOT_LABEL } from "./common.js";
 import { createAttrEditor } from "../attr_editor.js";
@@ -34,7 +34,7 @@ const selected = () => items().find((i) => i.name === ui.sel) || null;
 const targetLocal = () => S.target === "local";
 const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
 // the editor can only be used when the game's script knows it (older scripts have no `gear` flag on the items either)
-const gearEditable = (it) => !!it && !!it.gear && !(S.status && S.status.agentApi !== AGENT_API);
+const gearEditable = (it) => !!it && !!it.gear && !(S.status && !agentHas(2));
 const groupLabel = (g) => (S.items && S.items.groups && S.items.groups[g]) || g;
 
 function filtered() {

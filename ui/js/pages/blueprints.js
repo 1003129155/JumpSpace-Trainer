@@ -1,4 +1,4 @@
-import { S, AGENT_API, call, profileReady, loadGear, loadRecipes, loadHistory, rpc, post, load, save } from "../store.js";
+import { S, agentHas, call, profileReady, loadGear, loadRecipes, loadHistory, rpc, post, load, save } from "../store.js";
 import { $, $$, esc, fmt, icon, toast, confirmDialog } from "../ui.js";
 import { notReady } from "./common.js";
 import { createAttrEditor, TIERS } from "../attr_editor.js";
@@ -26,7 +26,7 @@ const byKey = (k) => gear().find((g) => g.key === k) || null;
 const slotsOf = (guid) => ((S.gear && S.gear.categories) || []).find((c) => c.guid === guid)?.slots || null;
 const clean = (s) => String(s || "").replace(/\s+/g, " ").trim();
 const untranslated = (g) => /^Missing loc|^UNNAMED$/.test(clean(g.display));
-const staleAgent = () => !!(S.status && S.status.agentApi !== AGENT_API);
+const staleAgent = () => !!S.status && !agentHas(2);
 
 // the order the game's crafting UI lists the categories in (unknown ones last)
 const CAT_ORDER = ["武器", "特殊武器", "驾驶员火炮", "多炮塔", "引擎", "反应堆", "护盾再生器", "辅助发电机", "传感器"];

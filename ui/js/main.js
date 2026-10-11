@@ -1,4 +1,4 @@
-import { S, AGENT_API, connection, refreshBridge, refreshStatus, loadPlayers, loadHistory, on } from "./store.js";
+import { S, AGENT_API, agentHas, connection, refreshBridge, refreshStatus, loadPlayers, loadHistory, on } from "./store.js";
 import { onBusy } from "./api.js";
 import { $, $$, esc, icon, load, save } from "./ui.js";
 import dashboard from "./pages/dashboard.js";
@@ -6,10 +6,11 @@ import currency from "./pages/currency.js";
 import items from "./pages/items.js";
 import blueprints from "./pages/blueprints.js";
 import ships from "./pages/ships.js";
+import ventures from "./pages/ventures.js";
 import cheats from "./pages/cheats.js";
 import log from "./pages/log.js";
 
-const PAGES = [dashboard, currency, items, blueprints, ships, cheats, log];
+const PAGES = [dashboard, currency, items, blueprints, ships, ventures, cheats, log];
 let current = null;
 let pollCount = 0;
 
@@ -56,11 +57,11 @@ function renderConn() {
 function renderAgentBar() {
   const el = $("#agentbar");
   if (!el) return;
-  const stale = !!(S.status && S.status.agentApi !== AGENT_API);
+  const stale = !!S.status && !agentHas(AGENT_API);
   if (stale === !el.hidden) return;
   el.hidden = !stale;
   el.innerHTML = stale
-    ? `<div class="callout info">${icon("info")}<div><b>游戏里运行的还是旧版本的修改器脚本。</b>调整蓝图和物品属性这类新功能要<b>重启一次游戏</b>后才能用，其余功能照常。（脚本只在游戏启动时装进去，装好后不能替换。）</div></div>`
+    ? `<div class="callout info">${icon("info")}<div><b>游戏里运行的还是旧版本的修改器脚本。</b>新加的功能要<b>重启一次游戏</b>后才能用，其余功能照常。（脚本只在游戏启动时装进去，装好后不能替换。）</div></div>`
     : "";
 }
 
@@ -145,7 +146,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "/" && !typing && current && current.focusSearch) {
     if (current.focusSearch()) e.preventDefault();
   }
-  if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-7]$/.test(e.key) && !document.querySelector(".modal-back")) {
+  if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-8]$/.test(e.key) && !document.querySelector(".modal-back")) {
     const p = PAGES[Number(e.key) - 1];
     if (p) location.hash = "#/" + p.id;
   }
