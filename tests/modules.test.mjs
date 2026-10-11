@@ -216,13 +216,29 @@ test("ship god mode keeps the ship's own god-mode flag on while a ship exists an
   assert.equal(s.godmode, false);
 });
 
+test("unlimited revives keep the ship's count of used respawns at zero", async () => {
+  const { JB } = cheatWorld();
+  const s = { used: 2 };
+  const used = fake({ get_Value: () => s.used, set_Value: (v) => { s.used = v; } });
+  const dc = fake({}, { m_Ship_StateBlackboardData: fake({}, { m_PlayerRespawns: used }) });
+  JB.U = { cls: () => fake({ op_Implicit: () => true }), all: (name) => (name === "Playership_DamageController" ? [dc] : []), name: () => "" };
+  const ex = {};
+  installCheats(JB, ex);
+  await call(ex, "setCheat", "revive", "true");
+  JB._tickers.get("cheat:revive").fn();
+  assert.equal(s.used, 0);
+  s.used = 1;
+  assert.equal((await call(ex, "cheatOnce", "revive")).ok, true);
+  assert.equal(s.used, 0);
+});
+
 test("unknown cheats are rejected and the summary reflects what is on", async () => {
   const { JB } = cheatWorld();
   const ex = {};
   installCheats(JB, ex);
   assert.equal((await call(ex, "setCheat", "fly", "true")).error.code, "UNKNOWN_CHEAT");
   await call(ex, "setCheat", "ammo", "true");
-  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, materia: false, speed: false, jump: false });
+  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, materia: false, speed: false, jump: false });
   JB._disposers.forEach((d) => d());
   assert.equal(JB.cheatSummary().ammo, false);
 });

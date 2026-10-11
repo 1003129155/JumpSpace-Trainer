@@ -111,7 +111,7 @@ STATUS = {
     "profile": {"ready": True, "level": 3, "rank": "探索者 I"},
     "player": {"id": "network:1", "clientId": "0", "name": "测试玩家", "local": True, "downed": False, "backpackAvailable": True, "health": 100, "maxHealth": 100, "shield": 25, "maxShield": 25, "invulnerable": False, "dead": False},
     "loadout": {"held": "铁带轻机枪", "heldName": "Pickupable_LMG_MK0", "ammo": {"current": 100, "max": 200}},
-    "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
+    "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "revive", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
 }
 if not STALE:
     STATUS["agentApi"] = 3

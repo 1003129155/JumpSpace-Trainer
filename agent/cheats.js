@@ -108,6 +108,23 @@ export function installCheats(JB, ex) {
     },
   };
 
+  // Players who go down come back at the ship while it has respawns left. The ship counts the ones used up
+  // (available = max − used) and the game itself resets that count whenever the ship loses a core life.
+  const shipRespawnsUsed = () => {
+    const dc = shipDamageController();
+    return dc ? dc.field("m_Ship_StateBlackboardData").value.field("m_PlayerRespawns").value : null;
+  };
+
+  defs.revive = {
+    label: "无限复活",
+    hint: "倒下后的复活次数始终是满的（飞船在任务中、你是房主时生效）",
+    every: 500,
+    tick() {
+      const used = shipRespawnsUsed();
+      if (used && used.method("get_Value").invoke() > 0) used.method("set_Value").invoke(0);
+    },
+  };
+
   defs.materia = {
     label: "无限飞船物质",
     hint: "飞船物质始终保持满值（复活队友、购买不再受限）",
