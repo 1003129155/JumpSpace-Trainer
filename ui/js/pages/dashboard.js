@@ -6,7 +6,7 @@ const CHEAT_META = {
   god: { icon: "shield", title: "无敌", sub: "角色不受任何伤害" },
   heal: { icon: "heart", title: "锁定血量与护盾", sub: "血量和护盾始终是满的" },
   ammo: { icon: "ammo", title: "无限弹药", sub: "弹匣与备弹永远是满的" },
-  ship: { icon: "rocket", title: "飞船核心无敌", sub: "飞船核心不会被击毁" },
+  ship: { icon: "rocket", title: "飞船无敌", sub: "飞船不受伤害，核心生命不减" },
   materia: { icon: "gem", title: "无限飞船物质", sub: "飞船物质始终是满的" },
 };
 

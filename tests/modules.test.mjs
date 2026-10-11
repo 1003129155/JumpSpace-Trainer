@@ -196,6 +196,26 @@ test("ammo lock fills magazine and reserve only when they are below max", async 
   assert.equal(s.ammo, 440);
 });
 
+test("ship god mode keeps the ship's own god-mode flag on while a ship exists and clears it when switched off", async () => {
+  const { JB } = cheatWorld();
+  const s = { godmode: false, ships: [] };
+  const flag = fake({ get_Value: () => s.godmode, set_Value: (v) => { s.godmode = v; } });
+  const dc = fake({}, { m_Ship_StateBlackboardData: fake({}, { m_Godmode: flag }) });
+  JB.U = { cls: () => fake({ op_Implicit: () => true }), all: (name) => (name === "Playership_DamageController" ? s.ships : []), name: () => "" };
+  const ex = {};
+  installCheats(JB, ex);
+  await call(ex, "setCheat", "ship", "true");
+  JB._tickers.get("cheat:ship").fn(); // no ship in the scene (lobby): nothing to do
+  assert.equal(s.godmode, false);
+  s.ships = [dc];
+  const realNow = Date.now;
+  Date.now = () => realNow() + 5000; // past the rescan pause
+  try { JB._tickers.get("cheat:ship").fn(); } finally { Date.now = realNow; }
+  assert.equal(s.godmode, true);
+  await call(ex, "setCheat", "ship", "false");
+  assert.equal(s.godmode, false);
+});
+
 test("unknown cheats are rejected and the summary reflects what is on", async () => {
   const { JB } = cheatWorld();
   const ex = {};

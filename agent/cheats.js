@@ -72,34 +72,39 @@ export function installCheats(JB, ex) {
   };
 
   // --- ship cheats -------------------------------------------------------
-  // The ship core is the run's life bar; its health component lives on a prefab
-  // named "…DamagePoint_ShipCore". It only exists while a ship is spawned.
-  let coreCache = null;
-  let coreScanAt = 0;
-  function shipCore() {
+  // The player ship's damage controller only exists while a ship is spawned (in a mission).
+  let shipCache = null;
+  let shipScanAt = 0;
+  function shipDamageController() {
     const O = () => JB.U.cls("UnityEngine.Object").method("op_Implicit");
-    if (coreCache) {
-      try { if (O().invoke(coreCache)) return coreCache; } catch (e) { /* rescan */ }
-      coreCache = null;
+    if (shipCache) {
+      try { if (O().invoke(shipCache)) return shipCache; } catch (e) { /* rescan */ }
+      shipCache = null;
     }
     const now = Date.now();
-    if (now - coreScanAt < 2000) return null; // scanning every tick would be wasteful
-    coreScanAt = now;
-    coreCache = JB.U.all("HealthComponent_Base", true).find((h) => /ShipCore/i.test(JB.U.name(h.method("get_gameObject").invoke()))) || null;
-    return coreCache;
+    if (now - shipScanAt < 2000) return null; // scanning every tick would be wasteful
+    shipScanAt = now;
+    shipCache = JB.U.all("Playership_DamageController", false)[0] || null;
+    return shipCache;
   }
+  // The ship's own god mode: the damage controller's immunity check reads it, so neither the hull nor the core loses
+  // health and no core life (death defiance) is used up. It is a networked flag of the ship, which only the host sets.
+  const shipGodmode = () => {
+    const dc = shipDamageController();
+    return dc ? dc.field("m_Ship_StateBlackboardData").value.field("m_Godmode").value : null;
+  };
 
   defs.ship = {
-    label: "飞船核心无敌",
-    hint: "飞船核心不会被击毁（飞船出现在任务中时生效）",
+    label: "飞船无敌",
+    hint: "飞船不受伤害，核心生命不会减少（飞船在任务中、你是房主时生效）",
     every: 500,
     tick() {
-      const core = shipCore();
-      if (core && !core.method("get_IsInvulnerable").invoke()) core.method("set_IsInvulnerable").invoke(true);
+      const g = shipGodmode();
+      if (g && !g.method("get_Value").invoke()) g.method("set_Value").invoke(true);
     },
     off() {
-      const core = shipCore();
-      if (core) core.method("set_IsInvulnerable").invoke(false);
+      const g = shipGodmode();
+      if (g && g.method("get_Value").invoke()) g.method("set_Value").invoke(false);
     },
   };
 
