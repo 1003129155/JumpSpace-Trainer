@@ -2,6 +2,7 @@
   "name": "jumpspace-trainer",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "An open-source trainer for Jump Space (Unity 6 / IL2CPP): currencies, items, blueprints with chosen modules, ships and cheats, through Frida.",
   "scripts": {

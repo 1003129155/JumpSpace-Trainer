@@ -188,3 +188,7 @@ node --check agent.js
 物品、装备、词条、分类和中文名都是每次启动时从游戏自己的资源目录读出来的，游戏新加的武器会自动出现，不用改修改器。
 内部类名 / 方法名可能变化。出现问题时界面会提示具体错误（例如 `GAME_API_CHANGED`），不会静默失败。
 用 `jsc.py describe <类名>` 或 `snippets\` 里的脚本重新确认字段，再改 `agent\` 里对应模块；测试里有对应的模拟对象可参考。
+
+## 许可证
+
+[MIT](LICENSE)。依赖的 Frida 和 frida-il2cpp-bridge 各有自己的许可证（打包版里带着 Frida）。
