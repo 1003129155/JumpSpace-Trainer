@@ -160,6 +160,24 @@ class GatewayRecord(TempData):
         self.assertEqual((entry["title"], entry["summary"]), ("直接完成任务", "任务按完成结算"))
         self.assertEqual(seen, ["auto"])
 
+    def test_a_ship_repair_is_logged_with_the_number_of_things_it_fixed_and_a_clean_ship_is_not(self):
+        seen = []
+        self.gw.backups.ensure_recent = lambda reason: seen.append(reason) or {"name": "20260101-000000_auto"}
+        self.reply["repairShip"] = {"ok": True, "found": {"total": 12}, "left": {"total": 0}}
+        r = self.gw.call("repairShip", [])
+        entry = self.gw.history.get(r["historyId"])
+        self.assertEqual((entry["title"], entry["summary"]), ("修复飞船", "12 项异常已修复"))
+        self.assertFalse(r["undoable"])
+        self.assertEqual(seen, [])  # the save is not touched
+        self.reply["repairShip"] = {"ok": True, "found": {"total": 0}, "left": {"total": 0}}
+        self.assertNotIn("historyId", self.gw.call("repairShip", []))
+
+    def test_the_ship_state_is_a_read_and_leaves_no_log_entry(self):
+        self.reply["shipHealth"] = {"ok": True, "available": True, "problems": {"total": 0}}
+        r = self.gw.call("shipHealth", [])
+        self.assertTrue(r["available"])
+        self.assertNotIn("historyId", r)
+
     def test_the_jump_map_is_a_read_and_leaves_no_log_entry(self):
         self.reply["jumpMap"] = {"ok": True, "available": False}
         r = self.gw.call("jumpMap", [])

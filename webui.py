@@ -36,12 +36,12 @@ SAVE_NAME = "persistent_user_data.bin"
 READ_METHODS = {
     "status", "progression", "cheats", "itemList", "itemInfo", "players", "inv", "recipes", "ships", "blueprints",
     "previewSpawn", "previewUnlockBlueprint", "previewUnlockShip", "previewAddBlueprint", "gearList", "gearEdit", "itemEdit",
-    "ventures", "jumpMap",
+    "ventures", "jumpMap", "shipHealth",
 }
 WRITE_METHODS = {
     "setCurrency", "addCurrency", "addExperience", "levelUp", "setMateria", "addMateria", "setCheat", "setCheatParam", "cheatOnce",
     "spawn", "equipHand", "unlockRecipes", "unlockShips", "addBlueprint", "lockRecipes",
-    "makeBlueprint", "removeRecipeBlueprints", "completeVenture", "jumpToNode", "completeMission",
+    "makeBlueprint", "removeRecipeBlueprints", "completeVenture", "jumpToNode", "completeMission", "repairShip",
 }
 # Changes to the profile (save file): back it up first.
 PROFILE_WRITES = {
@@ -373,6 +373,12 @@ class Gateway:
         elif method == "jumpToNode":
             entry["title"] = "跳跃到节点"
             entry["summary"] = (result.get("node") or {}).get("name") or "（未命名节点）"
+        elif method == "repairShip":
+            found = result.get("found") or {}
+            if not found.get("total"):
+                return None  # nothing was wrong
+            entry["title"] = "修复飞船"
+            entry["summary"] = f"{found['total']} 项异常已修复"
         elif method == "completeMission":
             entry["title"] = "直接完成任务"
             entry["summary"] = "任务按完成结算"

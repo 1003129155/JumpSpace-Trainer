@@ -114,7 +114,7 @@ STATUS = {
     "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "revive", "solo", "legendary", "damage", "spread", "recoil", "repair", "shipspeed", "shipturn", "shipboost", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
 }
 if not STALE:
-    STATUS["agentApi"] = 4
+    STATUS["agentApi"] = 5
 
 # ---- cheats (角色强化): the labels, hints and ranges of the real definitions -------------------------------------------
 def _cheat(name, label, hint, param=None):
@@ -162,6 +162,15 @@ JUMPMAP = {"available": True, "traveling": False, "nodes": [
     _node(5, "终点站", 3, 15, 0, [3, 4], finale=True),
     _node(6, "出口", 3, 18, 6, [5], exit=True, lava=True),
 ]}
+
+SHIP = {"hull": {"health": 3455, "max": 5000, "low": True}, "breaches": 2, "shield": {"value": 483, "max": 600, "low": True}, "fires": 3,
+        "leaks": 3, "fuelSegments": 1, "components": 2}
+
+
+def _ship_total():
+    return (int(SHIP["hull"]["low"]) + SHIP["breaches"] + int(SHIP["shield"]["low"]) + SHIP["fires"] + SHIP["leaks"]
+            + SHIP["fuelSegments"] + SHIP["components"])
+
 
 # ---- ventures (委托) --------------------------------------------------------------------------------------------------
 def _venture(key, name, kind, state, description, xp=0, credits=0, ingots=0, unlocks=(), achievement=False, prerequisites=True, season=True):
@@ -427,6 +436,12 @@ def raw(method, args, timeout=130):
             x["current"] = x is n
         n["visited"] = True
         return {"ok": True, "node": n}
+    if method == "shipHealth":
+        return {"ok": True, "available": True, "problems": {**SHIP, "total": _ship_total()}}
+    if method == "repairShip":
+        found = {**SHIP, "total": _ship_total()}
+        SHIP.update(hull={"health": 5000, "max": 5000, "low": False}, breaches=0, shield={"value": 600, "max": 600, "low": False}, fires=0, leaks=0, fuelSegments=0, components=0)
+        return {"ok": True, "found": found, "left": {**SHIP, "total": 0}}
     if method == "completeMission":
         return {"ok": True, "completed": True}
     if method == "ventures":

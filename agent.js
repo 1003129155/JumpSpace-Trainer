@@ -9,6 +9,7 @@ import { installUnlocks } from "./agent/unlocks.js";
 import { installVentures } from "./agent/ventures.js";
 import { installLoot } from "./agent/loot.js";
 import { installMission } from "./agent/mission.js";
+import { installShipRepair } from "./agent/shiprepair.js";
 
 // ---------------------------------------------------------------- helpers
 function ser(v) {
@@ -1513,6 +1514,7 @@ installUnlocks(JB, rpc.exports);
 installVentures(JB, rpc.exports);
 installLoot(JB);
 installMission(JB, rpc.exports);
+installShipRepair(JB, rpc.exports);
 
 // Called by daemon.py before the agent is replaced or the daemon exits:
 // switch the cheat locks off and drop retained Addressables handles.

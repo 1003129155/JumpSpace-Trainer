@@ -2,12 +2,15 @@ import { S, agentHas, rpc, load, save, loadHistory } from "../store.js";
 import { $, esc, icon, confirmDialog } from "../ui.js";
 import { notReady } from "./common.js";
 
-// The mission in progress: the jump map with every node, where the ship can be sent to any of them (the game only lets a
-// player pick a linked one), and ending the mission at once.
+// The mission in progress: the state of the ship with a one-click repair, the jump map with every node (the ship can be sent to
+// any of them; the game only lets a player pick a linked one), and ending the mission at once.
 let view = null;
 let busy = false;
 let data = null; // { available, nodes, traveling } as the game reports them
 let last = null; // outcome of the last action, shown under the buttons: { kind: ok|bad, text }
+let ship = null; // what is wrong with the ship: { available, problems } as the game reports it
+let shipLast = null; // outcome of the last repair: { kind, text }
+let repairing = false;
 let timer = null;
 const ui = { sel: load("ms.sel", null) };
 
@@ -25,6 +28,49 @@ function flags(n) {
 }
 
 const stateClass = (n) => [n.current ? "current" : "", n.visited ? "visited" : "", n.reachable ? "reachable" : "", n.finale ? "finale" : "", n.exit ? "exit" : "", n.lava ? "lava" : "", n.index === ui.sel ? "sel" : ""].filter(Boolean).join(" ");
+
+// ------------------------------------------------------------------ the ship
+// what is wrong, as [label, value] pairs
+function shipIssues(p) {
+  return [
+    p.hull.low && ["船体", `${p.hull.health} / ${p.hull.max}`],
+    p.breaches && ["船体破口", p.breaches],
+    p.shield.low && ["护盾", `${p.shield.value} / ${p.shield.max}`],
+    p.fires && ["起火", p.fires],
+    p.leaks && ["损坏点", p.leaks],
+    p.fuelSegments && ["燃料管断段", p.fuelSegments],
+    p.components && ["部件损坏", p.components],
+  ].filter(Boolean);
+}
+
+function renderShip() {
+  const el = $("#ms-ship", view);
+  if (!el) return;
+  const ok = ship && ship.available;
+  el.hidden = !ok;
+  if (!ok) return;
+  const p = ship.problems;
+  const issues = shipIssues(p);
+  const text = p.total
+    ? `<div class="ms-ship-title bad">${icon("alert")}飞船有 ${p.total} 项异常</div><div class="ms-ship-issues">${issues.map(([l, v]) => `<span class="tag">${esc(l)} <b class="num">${esc(String(v))}</b></span>`).join("")}</div>`
+    : `<div class="ms-ship-title ok">${icon("check")}飞船状态良好</div>`;
+  const note = shipLast && (shipLast.kind === "bad" || !p.total) ? `<div class="${shipLast.kind === "bad" ? "bad" : "muted"}" style="margin-top:6px">${esc(shipLast.text)}</div>` : "";
+  const html = `<div class="ms-ship-text">${text}${note}</div><button type="button" class="btn ${p.total ? "primary" : ""}" id="ms-repair" ${repairing || !p.total ? "disabled" : ""}>${icon("wrench")}${repairing ? "修复中…" : p.total ? "一键修复飞船" : "无需修复"}</button>`;
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+
+async function repairShip() {
+  if (repairing) return;
+  repairing = true;
+  renderShip();
+  const r = await rpc("repairShip");
+  repairing = false;
+  shipLast = r.ok
+    ? { kind: "ok", text: r.found && r.found.total ? `已修复 ${r.found.total} 项异常，飞船恢复如初。` : "飞船本来就没有异常。" }
+    : { kind: "bad", text: r.error ? r.error.message : "游戏没有回应" };
+  loadHistory();
+  await reload();
+}
 
 // ------------------------------------------------------------------ the map
 function mapHTML() {
@@ -133,8 +179,9 @@ function paint() {
 }
 
 async function reload() {
-  const r = await rpc("jumpMap");
+  const [r, health] = await Promise.all([rpc("jumpMap"), agentHas(5) ? rpc("shipHealth") : Promise.resolve(null)]);
   if (!view) return false;
+  ship = health && health.ok ? health : null;
   if (!r.ok) {
     data = null;
     $("#ms-none", view).innerHTML = `<div class="empty">${icon("alert")}<h3>读取跳跃图失败</h3><p>${esc(r.error ? r.error.message : "")}</p></div>`;
@@ -143,6 +190,7 @@ async function reload() {
   }
   data = r;
   paint();
+  renderShip();
   return true;
 }
 
@@ -194,6 +242,7 @@ const shellHTML = () => `
       <div class="md-side-foot"><span class="num" id="ms-count"></span></div>
     </aside>
     <section class="md-main">
+      <div class="ms-ship" id="ms-ship" hidden></div>
       <div class="ms-mapwrap" id="ms-map"></div>
       <div class="detail-empty" id="ms-empty"><div class="empty" style="padding:24px 10px">${icon("flag")}<h3>选一个节点</h3><p>点地图上的节点或左边的列表。</p></div></div>
       <div class="md-pane" id="ms-pane" hidden>
@@ -213,7 +262,7 @@ const stale = () => `<div class="callout info">${icon("info")}<div><b>游戏里�
 export default {
   id: "mission",
   title: "任务",
-  sub: "跳跃图传送与直接完成任务",
+  sub: "飞船一键修复、跳跃图传送与直接完成任务",
   icon: "map",
   group: "main",
 
@@ -228,6 +277,7 @@ export default {
       const node = e.target.closest("[data-index]");
       if (node && view.contains(node)) return select(Number(node.dataset.index));
       if (e.target.closest("#ms-jump")) return jump();
+      if (e.target.closest("#ms-repair")) return repairShip();
       if (e.target.closest("#ms-complete")) return complete();
       if (e.target.closest("#ms-reload")) return reload();
     };
