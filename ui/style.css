@@ -582,12 +582,3 @@ button { cursor: pointer; }
 .ms-node:hover circle { stroke-width: 3; }
 .kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .kv span { color: var(--muted); }
-.ms-ship { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
-.ms-ship[hidden] { display: none; }
-.ms-ship-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.ms-ship-title.ok { color: var(--good); }
-.ms-ship-title.bad { color: var(--warn); }
-.ms-ship-issues { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.ms-ship .btn { flex: none; }
-.ms-ship-title svg { width: 18px; height: 18px; flex: none; }
-.ms-ship-text .bad { color: var(--bad); }

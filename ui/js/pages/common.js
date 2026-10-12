@@ -16,6 +16,19 @@ export function notReady(what = "此功能", profileOnly = false) {
   return `<div class="empty">${icon("power")}<h3>${esc(title)}</h3><p>${esc(hint)}</p></div>`;
 }
 
+// what is wrong with the ship, as [label, value] pairs (the `problems` of the shipHealth reply)
+export function shipIssues(p) {
+  return [
+    p.hull.low && ["船体", `${p.hull.health} / ${p.hull.max}`],
+    p.breaches && ["船体破口", p.breaches],
+    p.shield.low && ["护盾", `${p.shield.value} / ${p.shield.max}`],
+    p.fires && ["起火", p.fires],
+    p.leaks && ["损坏点", p.leaks],
+    p.fuelSegments && ["燃料管断段", p.fuelSegments],
+    p.components && ["部件损坏", p.components],
+  ].filter(Boolean);
+}
+
 export const GROUP_COLOR = {
   weapon: "#ff7a6b", melee: "#ffa64d", throwable: "#ffd34d", consumable: "#4de3a0", gadget: "#55c7ff",
   shipSupply: "#7fa0ff", resource: "#b79bff", artifact: "#ff7ad9", component: "#5be1d5", novelty: "#f6a6c9", internal: "#6c7a99",

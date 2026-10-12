@@ -1,9 +1,11 @@
-import { S, call, connection, loadHistory, rpc } from "../store.js";
+import { S, agentHas, call, connection, loadHistory, rpc } from "../store.js";
 import { $, $$, esc, icon } from "../ui.js";
-import { notReady } from "./common.js";
+import { notReady, shipIssues } from "./common.js";
 
 let view = null;
 let info = {}; // name -> {label, hint, runs, error}
+let ship = null; // what is wrong with the ship: { available, problems } as the game reports it, null before the first reading
+let shipNote = null; // outcome of the last repair, shown in the row: { kind, text }
 
 const META = {
   god: { icon: "shield", once: null },
@@ -29,7 +31,7 @@ const ONCE_DONE = { heal: "已回满", ammo: "已补满", materia: "已补满", 
 const GROUPS = [
   { title: "生存", names: ["god", "heal", "revive"] },
   { title: "战斗", names: ["ammo", "damage", "spread", "recoil"] },
-  { title: "飞船", names: ["ship", "materia", "shipspeed", "shipturn", "shipboost", "repair"] },
+  { title: "飞船", names: ["ship", "materia", "shipspeed", "shipturn", "shipboost", "repair"], actions: ["repairShip"] },
   { title: "移动", names: ["speed", "jump"] },
   { title: "任务", names: ["solo", "legendary"] },
 ];
@@ -64,19 +66,76 @@ function row(name) {
   </div>`;
 }
 
+// An action is a row with a button instead of a switch: the one-click repair of the ship.
+const ACTIONS = {
+  repairShip: { icon: "wrench", label: "飞船一键修复", hint: "一键修好船体、破口、护盾、起火、损坏点、燃料管和损坏的部件，让飞船恢复如初（任务中、你是房主时生效）", button: "一键修复", done: "已修复" },
+};
+
+function actionRow(name) {
+  const a = ACTIONS[name];
+  return `
+  <div class="cheat-row" data-action-card="${name}">
+    <div class="cheat-main">
+      <div class="cheat-ico">${icon(a.icon)}</div>
+      <div class="cheat-text"><div class="cheat-name">${esc(a.label)}</div><div class="cheat-hint" data-action-hint>${esc(a.hint)}</div></div>
+      <div class="cheat-state"><span class="badge" data-action-state></span></div>
+      <button type="button" class="btn sm primary" data-action="${name}" data-label="${esc(a.button)}">${esc(a.button)}</button>
+    </div>
+  </div>`;
+}
+
+const actionShown = () => agentHas(5);
+
 function paint() {
   const names = Object.keys(info).length ? Object.keys(info) : ["god", "heal", "ammo"];
   const known = new Set(GROUPS.flatMap((g) => g.names));
   const groups = [...GROUPS, { title: "其他", names: names.filter((n) => !known.has(n)) }]
     .map((g) => ({ ...g, names: g.names.filter((n) => names.includes(n)) }))
-    .filter((g) => g.names.length);
+    .filter((g) => g.names.length || (g.actions || []).length);
   view.innerHTML = `
     <div class="cheat-bar">
       <div class="callout info">${icon("info")}<div>只影响<b>你的本机角色</b>。开关打开后修改器会一直保持效果；<b>关掉修改器或游戏时会自动关闭并恢复</b>。</div></div>
       <button type="button" class="btn" id="all-off">${icon("power")}全部关闭</button>
     </div>
     <div class="callout" id="cheat-noplayer" style="margin-bottom:14px" hidden>${icon("alert")}<div>你的角色现在不在场景里（加载中、已倒地或在菜单）。开关可以先打开，角色出现后会自动生效。</div></div>
-    <div class="card cheat-panel">${groups.map((g) => `<div class="cheat-group">${esc(g.title)}</div>${g.names.map(row).join("")}`).join("")}</div>`;
+    <div class="card cheat-panel">${groups.map((g) => `<div class="cheat-group">${esc(g.title)}</div>${g.names.map(row).join("")}${(g.actions || []).filter(actionShown).map(actionRow).join("")}`).join("")}</div>`;
+}
+
+async function refreshShip() {
+  if (!agentHas(5) || !S.status) { ship = null; return; }
+  const r = await rpc("shipHealth");
+  ship = r.ok ? r : null;
+}
+
+// the repair row: the state of the ship on the right, what is wrong under the name
+function syncShip() {
+  const el = $("[data-action-card='repairShip']", view);
+  if (!el) return;
+  const p = ship && ship.available ? ship.problems : null;
+  const badge = $("[data-action-state]", el);
+  const klass = "badge " + (!p ? "" : p.total ? "warn" : "good");
+  const html = !p ? "不在任务中" : p.total ? `${icon("alert")}${p.total} 项异常` : `${icon("check")}状态良好`;
+  if (badge.className !== klass) badge.className = klass;
+  if (badge.innerHTML !== html) badge.innerHTML = html;
+  const hint = $("[data-action-hint]", el);
+  const issues = p && p.total ? shipIssues(p).map(([l, v]) => `${l} ${v}`).join(" · ") : "";
+  const text = shipNote && shipNote.kind === "bad" ? shipNote.text : issues || ACTIONS.repairShip.hint;
+  if (hint.textContent !== text) hint.textContent = text;
+  hint.classList.toggle("bad", !!(shipNote && shipNote.kind === "bad"));
+  const btn = $("[data-action='repairShip']", el);
+  if (btn && !btn.dataset.busy) btn.disabled = !p || !p.total;
+}
+
+async function repairShip(btn) {
+  btn.disabled = true;
+  btn.dataset.busy = "1";
+  const r = await rpc("repairShip");
+  shipNote = r.ok ? null : { kind: "bad", text: r.error ? r.error.message : "游戏没有回应" };
+  if (r.ok) btn.innerHTML = `${icon("check")}${r.found && r.found.total ? `已修复 ${r.found.total} 项` : "没有异常"}`;
+  loadHistory();
+  await refreshShip();
+  setTimeout(() => { delete btn.dataset.busy; btn.textContent = btn.dataset.label; syncShip(); }, r.ok ? 1800 : 0);
+  syncShip();
 }
 
 async function refreshInfo() {
@@ -145,8 +204,11 @@ export default {
     if (connection().kind !== "good") { view.innerHTML = notReady("修改功能"); return; }
     await refreshInfo();
     if (!view) return;
+    await refreshShip();
+    if (!view) return;
     paint();
     sync();
+    syncShip();
     view.onchange = async (e) => {
       const range = e.target.closest("[data-param]");
       if (range) return commitParam(range.dataset.param, range.value);
@@ -173,6 +235,8 @@ export default {
         showParam(chip.closest("[data-cheat-card]"), { ...info[name].param, value: Number(chip.dataset.preset) });
         return commitParam(name, chip.dataset.preset);
       }
+      const action = e.target.closest("[data-action='repairShip']");
+      if (action) return repairShip(action);
       const once = e.target.closest("[data-once]");
       if (once) {
         once.disabled = true;
@@ -195,5 +259,7 @@ export default {
     if (!ready) { if (!$(".empty", view)) view.innerHTML = notReady("修改功能"); return; }
     if ($(".empty", view)) { this.render(view); return; }
     if (await refreshInfo() && view) sync();
+    await refreshShip();
+    if (view) syncShip();
   },
 };

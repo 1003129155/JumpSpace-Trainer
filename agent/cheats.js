@@ -119,7 +119,7 @@ export function installCheats(JB, ex) {
 
   defs.ship = {
     label: "飞船无敌",
-    hint: "飞船不受伤害，核心生命不会减少（飞船在任务中、你是房主时生效）",
+    hint: "飞船不受任何伤害，护盾和核心生命都不会减少，着火也烧不坏船体（任务中、你是房主时生效）。已经发生的起火和损坏不会自己消失，用下面的「飞船一键修复」处理",
     every: 500,
     tick() {
       const g = shipGodmode();
