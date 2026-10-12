@@ -299,7 +299,7 @@ test("unknown cheats are rejected and the summary reflects what is on", async ()
   installCheats(JB, ex);
   assert.equal((await call(ex, "setCheat", "fly", "true")).error.code, "UNKNOWN_CHEAT");
   await call(ex, "setCheat", "ammo", "true");
-  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, solo: false, legendary: false, materia: false, speed: false, jump: false });
+  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, solo: false, legendary: false, damage: false, materia: false, speed: false, jump: false });
   JB._disposers.forEach((d) => d());
   assert.equal(JB.cheatSummary().ammo, false);
 });

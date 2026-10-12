@@ -9,6 +9,7 @@ const META = {
   god: { icon: "shield", once: null },
   heal: { icon: "heart", once: { label: "立即回满", method: "heal" } },
   ammo: { icon: "ammo", once: { label: "立即补满弹药", method: "ammo" } },
+  damage: { icon: "bolt", once: null },
   ship: { icon: "rocket", once: null },
   revive: { icon: "user", once: { label: "立即补满", method: "revive" } },
   solo: { icon: "unlock", once: null },
@@ -21,7 +22,7 @@ const ONCE_DONE = { heal: "已回满", ammo: "已补满", materia: "已补满", 
 // the order and grouping of the switches on the page (switches the game's script adds later go under 其他)
 const GROUPS = [
   { title: "生存", names: ["god", "heal", "revive"] },
-  { title: "战斗", names: ["ammo"] },
+  { title: "战斗", names: ["ammo", "damage"] },
   { title: "飞船", names: ["ship", "materia"] },
   { title: "移动", names: ["speed", "jump"] },
   { title: "任务", names: ["solo", "legendary"] },

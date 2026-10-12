@@ -2,6 +2,7 @@
 // while enabled. Each cheat only touches the local player's own objects.
 import { createScaler } from "./movement.js";
 import { LEGENDARY } from "./loot.js";
+import { createDamageBoost } from "./damage.js";
 
 export function installCheats(JB, ex) {
   const { onMain, bridgeError, rpcSafe, addTicker, removeTicker } = JB;
@@ -207,6 +208,17 @@ export function installCheats(JB, ex) {
       const c = JB.U.all("Keepsake.ShipMateriaController", true).find((x) => JB.safe(() => x.method("get_NetworkObject").invoke().method("get_IsSpawned").invoke(), false));
       if (c) c.method("ModifyMateria").invoke(max - amount);
     },
+  };
+
+  // Damage of the weapon in hand, on top of whatever the game's own modifiers give it; see damage.js.
+  const damage = createDamageBoost(JB);
+  defs.damage = {
+    label: "超级伤害",
+    hint: "手里这把枪的伤害大幅提升，对敌人和敌方飞船都生效，只影响你自己的武器。倍率加在枪原有的伤害加成之上，实际略低于标称倍数；爆炸类武器对自己的伤害也可能放大，建议配合无敌",
+    every: 100,
+    param: { label: "倍率", min: 2, max: 100, step: 1, value: 10, unit: "×", presets: [5, 10, 50, 100] },
+    tick: () => { damage.apply(defs.damage.param.value); },
+    off: () => { damage.release(); },
   };
 
   // --- movement (multiplier cheats) --------------------------------------
