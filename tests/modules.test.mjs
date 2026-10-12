@@ -258,13 +258,26 @@ test("solo doors keep a shield's required players at one and put the rule's numb
   assert.deepEqual([all._s.n, one._s.n, gone._s.n], [4, 1, 3]);
 });
 
+test("legendary loot sets the loot rarity to Legendary while on and gives the game's own roll back when off", async () => {
+  const { JB } = cheatWorld();
+  const calls = [];
+  JB.lootRarity = { set: (r) => calls.push(r) };
+  const ex = {};
+  installCheats(JB, ex);
+  await call(ex, "setCheat", "legendary", "true");
+  JB._tickers.get("cheat:legendary").fn();
+  assert.deepEqual(calls, [3]);
+  await call(ex, "setCheat", "legendary", "false");
+  assert.deepEqual(calls, [3, null]);
+});
+
 test("unknown cheats are rejected and the summary reflects what is on", async () => {
   const { JB } = cheatWorld();
   const ex = {};
   installCheats(JB, ex);
   assert.equal((await call(ex, "setCheat", "fly", "true")).error.code, "UNKNOWN_CHEAT");
   await call(ex, "setCheat", "ammo", "true");
-  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, solo: false, materia: false, speed: false, jump: false });
+  assert.deepEqual({ ...JB.cheatSummary() }, { god: false, heal: false, ammo: true, ship: false, revive: false, solo: false, legendary: false, materia: false, speed: false, jump: false });
   JB._disposers.forEach((d) => d());
   assert.equal(JB.cheatSummary().ammo, false);
 });

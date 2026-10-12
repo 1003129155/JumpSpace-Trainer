@@ -7,6 +7,7 @@ import { installGear } from "./agent/gear.js";
 import { installItems } from "./agent/items.js";
 import { installUnlocks } from "./agent/unlocks.js";
 import { installVentures } from "./agent/ventures.js";
+import { installLoot } from "./agent/loot.js";
 
 // ---------------------------------------------------------------- helpers
 function ser(v) {
@@ -1509,6 +1510,7 @@ installGear(JB, rpc.exports); // before the items: the item list asks which item
 installItems(JB, rpc.exports);
 installUnlocks(JB, rpc.exports);
 installVentures(JB, rpc.exports);
+installLoot(JB);
 
 // Called by daemon.py before the agent is replaced or the daemon exits:
 // switch the cheat locks off and drop retained Addressables handles.

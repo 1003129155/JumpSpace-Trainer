@@ -1,6 +1,7 @@
 // Cheat "locks": tiny jobs that run on the Unity main thread a few times a second
 // while enabled. Each cheat only touches the local player's own objects.
 import { createScaler } from "./movement.js";
+import { LEGENDARY } from "./loot.js";
 
 export function installCheats(JB, ex) {
   const { onMain, bridgeError, rpcSafe, addTicker, removeTicker } = JB;
@@ -164,6 +165,15 @@ export function installCheats(JB, ex) {
       }
       shieldRules.clear();
     },
+  };
+
+  // Everything the game rolls as loot with a rarity (weapons, gear, ship parts) becomes Legendary; see loot.js.
+  defs.legendary = {
+    label: "传说级掉落",
+    hint: "掉落的武器、装备和飞船部件全是红色传说级；弹药、资源这类没有品质的物品不受影响（你是房主时生效）",
+    every: 1000,
+    tick() { JB.lootRarity.set(LEGENDARY); },
+    off() { JB.lootRarity.set(null); },
   };
 
   defs.materia = {
