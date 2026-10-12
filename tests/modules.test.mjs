@@ -156,7 +156,10 @@ function cheatWorld() {
     m_ItemInstantiator: fake({}, { m_FirstPersonItem: weapon }),
     m_ItemHandler: fake({ get_MaxAmmo: () => s.maxAmmo }),
   });
-  const JB = baseJB({ localPlayer: () => player, healthOf: () => hc, U: { cls: () => fake(), all: () => [], name: () => "" } });
+  s.debugSettings = { value: false }; // the debug settings' m_GodMode field: written through, so the object is shared
+  const debugSettings = { isNull: () => false, field: () => s.debugSettings };
+  const debugClass = fake({ get_Settings: () => debugSettings });
+  const JB = baseJB({ localPlayer: () => player, healthOf: () => hc, U: { cls: (name) => (name === "Keepsake.PlayerDebugSettings" ? debugClass : fake()), all: () => [], name: () => "" } });
   return { s, JB };
 }
 
@@ -170,6 +173,25 @@ test("god mode keeps the invulnerable flag on and restores it when switched off"
   await call(ex, "setCheat", "god", "false");
   assert.equal(s.invulnerable, false);
   assert.equal(JB._tickers.has("cheat:god"), false);
+});
+
+test("god mode also sets the game's debug god flag (a full radiation bar downs the character past IsInvulnerable) and puts the old value back", async () => {
+  const { s, JB } = cheatWorld();
+  const ex = {};
+  installCheats(JB, ex);
+  assert.equal(s.debugSettings.value, false);
+  await call(ex, "setCheat", "god", "true");
+  JB._tickers.get("cheat:god").fn();
+  assert.equal(s.debugSettings.value, true);
+  await call(ex, "setCheat", "god", "false");
+  assert.equal(s.debugSettings.value, false);
+
+  // a flag that was already on before the cheat is left on afterwards
+  s.debugSettings.value = true;
+  await call(ex, "setCheat", "god", "true");
+  JB._tickers.get("cheat:god").fn();
+  await call(ex, "setCheat", "god", "false");
+  assert.equal(s.debugSettings.value, true);
 });
 
 test("heal lock tops up health and shield, and leaves a dead character alone", async () => {

@@ -11,17 +11,36 @@ export function installCheats(JB, ex) {
     return p ? JB.healthOf(p) : null;
   };
 
+  // The game's debug god-mode flag. A full radiation bar downs the character directly (PlayerRadiationAbility →
+  // DownPlayer), past the damage system that IsInvulnerable guards; with this flag the radiation ability never starts and
+  // DownPlayer does nothing. The value found before the cheat touched it is put back when it is switched off.
+  let debugGodWas = null;
+  const setDebugGod = (on) => {
+    const s = JB.U.cls("Keepsake.PlayerDebugSettings").method("get_Settings").invoke();
+    if (s.isNull()) return;
+    const flag = s.field("m_GodMode");
+    if (on) {
+      if (debugGodWas === null) debugGodWas = flag.value;
+      if (!flag.value) flag.value = true;
+    } else if (debugGodWas !== null) {
+      flag.value = debugGodWas;
+      debugGodWas = null;
+    }
+  };
+
   const defs = {
     // The game's own invulnerability flag: every damage path ignores the player.
     god: {
       label: "无敌",
-      hint: "角色不受任何伤害（游戏自带的无敌标记，持续维持）",
+      hint: "角色不受任何伤害，辐射条满了也不会倒（游戏自带的无敌标记，持续维持）",
       every: 250,
       tick() {
         const hc = localHealth();
         if (hc && !hc.method("get_IsInvulnerable").invoke()) hc.method("set_IsInvulnerable").invoke(true);
+        setDebugGod(true);
       },
       off() {
+        setDebugGod(false);
         const hc = localHealth();
         if (hc) hc.method("set_IsInvulnerable").invoke(false);
       },
