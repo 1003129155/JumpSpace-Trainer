@@ -111,10 +111,57 @@ STATUS = {
     "profile": {"ready": True, "level": 3, "rank": "探索者 I"},
     "player": {"id": "network:1", "clientId": "0", "name": "测试玩家", "local": True, "downed": False, "backpackAvailable": True, "health": 100, "maxHealth": 100, "shield": 25, "maxShield": 25, "invulnerable": False, "dead": False},
     "loadout": {"held": "铁带轻机枪", "heldName": "Pickupable_LMG_MK0", "ammo": {"current": 100, "max": 200}},
-    "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "revive", "solo", "legendary", "damage", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
+    "cheats": {k: False for k in ("god", "heal", "ammo", "ship", "revive", "solo", "legendary", "damage", "spread", "recoil", "repair", "shipspeed", "shipturn", "shipboost", "materia", "speed", "jump")}, "materia": {"amount": 100, "max": 100},
 }
 if not STALE:
-    STATUS["agentApi"] = 3
+    STATUS["agentApi"] = 4
+
+# ---- cheats (角色强化): the labels, hints and ranges of the real definitions -------------------------------------------
+def _cheat(name, label, hint, param=None):
+    return {"name": name, "label": label, "hint": hint, "enabled": False, "runs": 0, "error": None, "param": param}
+
+
+def _mult(lo, hi, step, value, presets):
+    return {"label": "倍率", "min": lo, "max": hi, "step": step, "value": value, "unit": "×", "presets": presets}
+
+
+CHEATS = [
+    _cheat("god", "无敌", "角色不受任何伤害，辐射条满了也不会倒（游戏自带的无敌标记，持续维持）"),
+    _cheat("heal", "锁定血量与护盾", "血量和护盾始终保持满值"),
+    _cheat("revive", "无限复活", "倒下后的复活次数始终是满的（飞船在任务中、你是房主时生效）"),
+    _cheat("ammo", "无限弹药", "手持武器的弹匣和备弹始终保持满值，无需换弹"),
+    _cheat("damage", "超级伤害", "手里这把枪的伤害大幅提升，对敌人和敌方飞船都生效，只影响你自己的武器。倍率加在枪原有的伤害加成之上，实际略低于标称倍数；爆炸类武器对自己的伤害也可能放大，建议配合无敌", _mult(2, 100, 1, 10, [5, 10, 50, 100])),
+    _cheat("spread", "无散布", "手里这把枪的子弹不再散开，准星不随移动、跳跃、连射变大（改的是这把枪的散布数据，关掉就还原）"),
+    _cheat("recoil", "无后坐力", "开枪时镜头不再上抬、不再晃动（改的是这把枪的后坐力数据，关掉就还原）"),
+    _cheat("ship", "飞船无敌", "飞船不受伤害，核心生命不会减少（飞船在任务中、你是房主时生效）"),
+    _cheat("materia", "无限飞船物质", "飞船物质始终保持满值"),
+    _cheat("shipspeed", "飞船加速", "飞船的最高速度和加速度按倍率提升（任务中、飞船存在时生效）", _mult(1.25, 5, 0.25, 2, [1.5, 2, 3, 5])),
+    _cheat("shipturn", "飞船转向", "飞船转向更灵敏、转得更快（任务中、飞船存在时生效）", _mult(1.25, 4, 0.25, 1.5, [1.5, 2, 3])),
+    _cheat("shipboost", "推进器加强", "推进器的速度更快、能持续更久、冷却更短（任务中、飞船存在时生效）", _mult(1.25, 5, 0.25, 2, [1.5, 2, 3, 5])),
+    _cheat("repair", "修理加速", "修理飞船船体和部件的速度按倍率提升，只影响你自己动手修理", _mult(2, 20, 1, 4, [2, 4, 10, 20])),
+    _cheat("speed", "移动速度", "走路和冲刺速度按倍率提升", _mult(1.25, 4, 0.25, 1.5, [1.5, 2, 3])),
+    _cheat("jump", "跳跃力度", "起跳力度按倍率提升，能跳得更高更远", _mult(1.25, 3, 0.25, 1.5, [1.5, 2, 3])),
+    _cheat("solo", "单人开门", "多人护盾门一个人就能开"),
+    _cheat("legendary", "传说级掉落", "掉落的武器、装备和飞船部件全是红色传说级"),
+]
+
+# ---- jump map (任务) ---------------------------------------------------------------------------------------------------
+def _node(i, name, level, x, z, links, **kw):
+    n = {"index": i, "name": name, "sub": "", "level": level, "pos": [x, z], "links": links, "current": False, "reachable": False,
+         "visited": False, "finale": False, "exit": False, "lava": False, "heat": 40}
+    n.update(kw)
+    return n
+
+
+JUMPMAP = {"available": True, "traveling": False, "nodes": [
+    _node(0, "起点", 0, 0, 0, [1, 2], current=True, visited=True),
+    _node(1, "废弃补给站", 1, 5, 3, [0, 3], reachable=True),
+    _node(2, "漂流残骸", 1, 5, -3, [0, 4], reachable=True),
+    _node(3, "敌方前哨", 2, 10, 4, [1, 5]),
+    _node(4, "货船航线", 2, 10, -4, [2, 5]),
+    _node(5, "终点站", 3, 15, 0, [3, 4], finale=True),
+    _node(6, "出口", 3, 18, 6, [5], exit=True, lava=True),
+]}
 
 # ---- ventures (委托) --------------------------------------------------------------------------------------------------
 def _venture(key, name, kind, state, description, xp=0, credits=0, ingots=0, unlocks=(), achievement=False, prerequisites=True, season=True):
@@ -368,6 +415,20 @@ def raw(method, args, timeout=130):
             norm, ev = evaluate(json.loads(spec) if isinstance(spec, str) else spec)
             out["gear"] = {"tier": norm["tier"], "level": ev["level"], "modules": len(norm["slots"])}
         return out
+    if method == "jumpMap":
+        return {"ok": True, **JUMPMAP}
+    if method == "jumpToNode":
+        n = next((x for x in JUMPMAP["nodes"] if x["index"] == (args[0] if args else -1)), None)
+        if not n:
+            return {"ok": False, "error": {"code": "NODE_NOT_FOUND", "message": "没有这个节点，请刷新跳跃图"}}
+        if n["current"]:
+            return {"ok": False, "error": {"code": "ALREADY_THERE", "message": "飞船已经在这个节点了"}}
+        for x in JUMPMAP["nodes"]:
+            x["current"] = x is n
+        n["visited"] = True
+        return {"ok": True, "node": n}
+    if method == "completeMission":
+        return {"ok": True, "completed": True}
     if method == "ventures":
         return {"ok": True, "ventures": VENTURES, "hidden": 28}
     if method == "completeVenture":
@@ -378,7 +439,9 @@ def raw(method, args, timeout=130):
             return {"ok": True, "changed": False, "venture": v}
         v["state"] = "completed"
         return {"ok": True, "changed": True, "venture": v}
-    if method in ("progression", "cheats", "ships"):
+    if method == "cheats":
+        return {"ok": True, "cheats": CHEATS}
+    if method in ("progression", "ships"):
         return {"ok": True}
     return {"ok": True, "changed": False}
 

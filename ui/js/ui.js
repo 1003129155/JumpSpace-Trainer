@@ -55,6 +55,8 @@ const P = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.500v3M12 18.500v3M4.500 4.500l2.100 2.100M17.400 17.400l2.100 2.100M2.500 12h3M18.500 12h3M4.500 19.500l2.100-2.100M17.400 6.600l2.100-2.100"/>',
   wrench: '<path d="M14.500 6.500a4 4 0 0 0 5 5L21 13l-8 8-4-4 8-8z"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
   sword: '<path d="M14.500 3H21v6.500L9.500 21l-3-3L18 6.500zM5 19l-2 2M7 15l2 2"/>',
 };
 export function icon(name, cls = "") {

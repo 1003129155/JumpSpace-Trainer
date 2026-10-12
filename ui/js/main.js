@@ -7,10 +7,11 @@ import items from "./pages/items.js";
 import blueprints from "./pages/blueprints.js";
 import ships from "./pages/ships.js";
 import ventures from "./pages/ventures.js";
+import mission from "./pages/mission.js";
 import cheats from "./pages/cheats.js";
 import log from "./pages/log.js";
 
-const PAGES = [dashboard, currency, items, blueprints, ships, ventures, cheats, log];
+const PAGES = [dashboard, currency, items, blueprints, ships, ventures, mission, cheats, log];
 let current = null;
 let pollCount = 0;
 
@@ -146,7 +147,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "/" && !typing && current && current.focusSearch) {
     if (current.focusSearch()) e.preventDefault();
   }
-  if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-8]$/.test(e.key) && !document.querySelector(".modal-back")) {
+  if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && /^[1-9]$/.test(e.key) && !document.querySelector(".modal-back")) {
     const p = PAGES[Number(e.key) - 1];
     if (p) location.hash = "#/" + p.id;
   }

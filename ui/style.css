@@ -562,3 +562,23 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* mission page: the jump map */
+.ms-mapwrap { flex: none; padding: 12px 18px 0; }
+.ms-mapwrap:empty { display: none; }
+.ms-map { display: block; width: 100%; max-height: 340px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; }
+.ms-link { stroke: var(--line-strong); stroke-width: 2; }
+.ms-node { cursor: pointer; }
+.ms-node circle { fill: var(--panel); stroke: var(--line-strong); stroke-width: 2; }
+.ms-node text { fill: var(--muted); font-size: 12px; text-anchor: middle; pointer-events: none; }
+.ms-node.visited circle { fill: color-mix(in srgb, var(--muted) 35%, var(--panel)); }
+.ms-node.reachable circle { stroke: var(--accent); }
+.ms-node.finale circle { stroke: var(--accent-2); }
+.ms-node.exit circle { stroke: #b79bff; }
+.ms-node.lava { opacity: .45; }
+.ms-node.current circle { fill: var(--accent); stroke: var(--accent); }
+.ms-node.current text { fill: var(--accent-ink); font-weight: 700; }
+.ms-node.sel circle { stroke: #fff; stroke-width: 3; }
+.ms-node:hover circle { stroke-width: 3; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.kv span { color: var(--muted); }

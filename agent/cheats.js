@@ -2,7 +2,9 @@
 // while enabled. Each cheat only touches the local player's own objects.
 import { createScaler } from "./movement.js";
 import { LEGENDARY } from "./loot.js";
-import { createDamageBoost } from "./damage.js";
+import { createDamageBoost, createRepairBoost } from "./statboost.js";
+import { createRecoilControl, SPREAD_FIELDS, KICK_FIELDS } from "./recoil.js";
+import { createShipTuner, SHIP_GROUPS } from "./shipflight.js";
 
 export function installCheats(JB, ex) {
   const { onMain, bridgeError, rpcSafe, addTicker, removeTicker } = JB;
@@ -220,6 +222,45 @@ export function installCheats(JB, ex) {
     tick: () => { damage.apply(defs.damage.param.value); },
     off: () => { damage.release(); },
   };
+
+  // The weapon in hand shoots without spread and kicks the camera no more; see recoil.js.
+  const spread = createRecoilControl(JB, SPREAD_FIELDS);
+  const recoil = createRecoilControl(JB, KICK_FIELDS);
+  defs.spread = {
+    label: "无散布",
+    hint: "手里这把枪的子弹不再散开，准星不随移动、跳跃、连射变大（改的是这把枪的散布数据，关掉就还原）",
+    every: 250,
+    tick: () => { spread.apply(); },
+    off: () => { spread.release(); },
+  };
+  defs.recoil = {
+    label: "无后坐力",
+    hint: "开枪时镜头不再上抬、不再晃动（改的是这把枪的后坐力数据，关掉就还原）",
+    every: 250,
+    tick: () => { recoil.apply(); },
+    off: () => { recoil.release(); },
+  };
+
+  // Repairs of the ship, by the repair tool and at the damaged parts, go faster; see statboost.js.
+  const repair = createRepairBoost(JB);
+  defs.repair = {
+    label: "修理加速",
+    hint: "修理飞船船体和部件的速度按倍率提升，只影响你自己动手修理",
+    every: 250,
+    param: { label: "倍率", min: 2, max: 20, step: 1, value: 4, unit: "×", presets: [2, 4, 10, 20] },
+    tick: () => { repair.apply(defs.repair.param.value); },
+    off: () => { repair.release(); },
+  };
+
+  // The player ship's handling; see shipflight.js. Only while a ship exists (in a mission).
+  const flightCheat = (group, label, hint, param) => {
+    const tuner = createShipTuner(JB, SHIP_GROUPS[group]);
+    const def = { label, hint, every: 500, param: { label: "倍率", unit: "×", ...param }, tick: () => { tuner.apply(def.param.value); }, off: () => { tuner.release(); } };
+    return def;
+  };
+  defs.shipspeed = flightCheat("speed", "飞船加速", "飞船的最高速度和加速度按倍率提升（任务中、飞船存在时生效）", { min: 1.25, max: 5, step: 0.25, value: 2, presets: [1.5, 2, 3, 5] });
+  defs.shipturn = flightCheat("turn", "飞船转向", "飞船转向更灵敏、转得更快（任务中、飞船存在时生效）", { min: 1.25, max: 4, step: 0.25, value: 1.5, presets: [1.5, 2, 3] });
+  defs.shipboost = flightCheat("boost", "推进器加强", "推进器的速度更快、能持续更久、冷却更短（任务中、飞船存在时生效）", { min: 1.25, max: 5, step: 0.25, value: 2, presets: [1.5, 2, 3, 5] });
 
   // --- movement (multiplier cheats) --------------------------------------
   // Scaled on top of the character's base values; see movement.js for how this stays reversible.

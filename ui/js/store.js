@@ -3,7 +3,7 @@ import { rpc, get, post } from "./api.js";
 import { toast, load, save } from "./ui.js";
 
 // The version of the agent's RPC interface this window was written for (agent/status.js reports the one the game runs)
-export const AGENT_API = 3;
+export const AGENT_API = 4;
 // whether the script running in the game has a feature that came with interface version `api` (2: attributes, 3: ventures)
 export const agentHas = (api) => !!(S.status && (S.status.agentApi || 0) >= api);
 

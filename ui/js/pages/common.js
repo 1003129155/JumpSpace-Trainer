@@ -29,4 +29,5 @@ export const METHOD_ICON = {
   spawn: "box", equipHand: "hand", unlockRecipes: "blueprint", lockRecipes: "lock", unlockShips: "rocket",
   makeBlueprint: "blueprint", customBlueprint: "blueprint", recipeBlueprints: "blueprint", saveRecipeBlueprints: "blueprint",
   removeRecipeBlueprints: "blueprint", addBlueprint: "blueprint", setCheat: "bolt", undo: "undo",
+  jumpToNode: "map", completeMission: "flag",
 };

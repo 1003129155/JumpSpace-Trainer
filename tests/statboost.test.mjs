@@ -1,10 +1,10 @@
-// Unit tests for agent/damage.js and the "超级伤害" cheat against stand-ins for the game's modifier manager (no game, no Frida).
+// Unit tests for agent/statboost.js and the "超级伤害" / "修理加速" cheats against stand-ins for the game's modifier manager (no game, no Frida).
 // The multiplier itself (base × (1 + sum), asked with the held weapon as owner) is checked in the running game.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { installCheats } from "../agent/cheats.js";
-import { createDamageBoost } from "../agent/damage.js";
+import { createDamageBoost, createRepairBoost } from "../agent/statboost.js";
 import { baseJB, bridgeError, call, fake } from "./helpers.mjs";
 
 const obj = (name) => ({ name, handle: { toString: () => name }, ref: () => ({ pinned: name }) });
@@ -110,4 +110,24 @@ test("the cheat takes a multiplier of 2 to 100, applies it while on and removes 
   await call(ex, "setCheat", "damage", "false");
   assert.equal(w.calls.remove.length, 2);
   assert.equal(w.JB._tickers.has("cheat:damage"), false);
+});
+
+test("repair speed asks about the player, its interaction controller's owner and the held tool's owner", () => {
+  const w = world();
+  const owner = (name) => ({ isNull: () => false, handle: { toString: () => name } });
+  const stat = (name) => ({ isNull: () => false, field: () => ({ value: owner(name) }) });
+  const kit = { isNull: () => false, class: { fields: [{ name: "m_RepairSpeed" }] }, field: () => ({ value: stat("0xkit-owner") }) };
+  const controller = { isNull: () => false, field: () => ({ value: stat("0xcontroller-owner") }) };
+  const playerGo = obj("0xplayer");
+  const player = {
+    method: (name) => ({ invoke: () => (name === "get_InteractionController" ? controller : playerGo) }),
+    field: () => ({ value: { field: () => ({ value: kit }) } }),
+  };
+  w.JB.localPlayer = () => player;
+  const boost = createRepairBoost(w.JB);
+  boost.apply(4);
+  assert.deepEqual(w.calls.add.map((a) => a[0]), ["stat:RepairSpeed"]);
+  const fn = w.calls.add[0][2].fn;
+  for (const mine of ["0xplayer", "0xcontroller-owner", "0xkit-owner"]) assert.equal(fn(obj(mine)), 3, mine);
+  assert.equal(fn(obj("0xsomeone-else")), 0);
 });

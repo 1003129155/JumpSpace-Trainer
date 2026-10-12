@@ -36,17 +36,17 @@ SAVE_NAME = "persistent_user_data.bin"
 READ_METHODS = {
     "status", "progression", "cheats", "itemList", "itemInfo", "players", "inv", "recipes", "ships", "blueprints",
     "previewSpawn", "previewUnlockBlueprint", "previewUnlockShip", "previewAddBlueprint", "gearList", "gearEdit", "itemEdit",
-    "ventures",
+    "ventures", "jumpMap",
 }
 WRITE_METHODS = {
     "setCurrency", "addCurrency", "addExperience", "levelUp", "setMateria", "addMateria", "setCheat", "setCheatParam", "cheatOnce",
     "spawn", "equipHand", "unlockRecipes", "unlockShips", "addBlueprint", "lockRecipes",
-    "makeBlueprint", "removeRecipeBlueprints", "completeVenture",
+    "makeBlueprint", "removeRecipeBlueprints", "completeVenture", "jumpToNode", "completeMission",
 }
 # Changes to the profile (save file): back it up first.
 PROFILE_WRITES = {
     "setCurrency", "addCurrency", "addExperience", "levelUp", "unlockRecipes", "unlockShips", "addBlueprint", "lockRecipes",
-    "makeBlueprint", "removeRecipeBlueprints", "completeVenture",
+    "makeBlueprint", "removeRecipeBlueprints", "completeVenture", "completeMission",
 }
 ALLOWED = READ_METHODS | WRITE_METHODS
 
@@ -370,6 +370,12 @@ class Gateway:
             v = result.get("venture") or {}
             entry["title"] = "完成委托"
             entry["summary"] = (v.get("name") or self.names.get(args[0] if args else "", "?")) + venture_rewards_text(v)
+        elif method == "jumpToNode":
+            entry["title"] = "跳跃到节点"
+            entry["summary"] = (result.get("node") or {}).get("name") or "（未命名节点）"
+        elif method == "completeMission":
+            entry["title"] = "直接完成任务"
+            entry["summary"] = "任务按完成结算"
         elif method == "lockRecipes":
             done = [r for r in result.get("results", []) if r.get("ok") and r.get("changed")]
             entry["title"] = "重新锁定配方"

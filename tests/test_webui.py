@@ -145,6 +145,27 @@ class GatewayRecord(TempData):
         self.assertNotIn("historyId", r)
         self.assertEqual(self.gw.history.recent(), [])
 
+    def test_jumping_and_ending_a_mission_are_logged_and_only_ending_it_backs_up_the_save(self):
+        seen = []
+        self.gw.backups.ensure_recent = lambda reason: seen.append(reason) or {"name": "20260101-000000_auto"}
+        self.reply["jumpToNode"] = {"ok": True, "node": {"index": 2, "name": "终点站"}}
+        r = self.gw.call("jumpToNode", [2])
+        entry = self.gw.history.get(r["historyId"])
+        self.assertEqual((entry["title"], entry["summary"]), ("跳跃到节点", "终点站"))
+        self.assertFalse(r["undoable"])
+        self.assertEqual(seen, [])  # the save is not touched by a jump
+        self.reply["completeMission"] = {"ok": True, "completed": True}
+        r = self.gw.call("completeMission", [])
+        entry = self.gw.history.get(r["historyId"])
+        self.assertEqual((entry["title"], entry["summary"]), ("直接完成任务", "任务按完成结算"))
+        self.assertEqual(seen, ["auto"])
+
+    def test_the_jump_map_is_a_read_and_leaves_no_log_entry(self):
+        self.reply["jumpMap"] = {"ok": True, "available": False}
+        r = self.gw.call("jumpMap", [])
+        self.assertEqual(r["available"], False)
+        self.assertNotIn("historyId", r)
+
     def test_blueprint_changes_and_removals_back_up_the_save_file_first(self):
         seen = []
         self.gw.backups.ensure_recent = lambda reason: seen.append(reason) or {"name": "20260101-000000_auto"}
